@@ -20,3 +20,4 @@ class TableColumn(BaseModel):
     datatype: Datatype
     nullable: Optional[bool] = False
     primary_key: Optional[PrimaryKeyType] = None
+    unique: Optional[bool] = False

@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from pydantic import BaseModel, create_model
-from typing import Dict, List
+from typing import Dict, List, Callable
 from ansqlite.schema import TableColumn, PrimaryKeyType
 from ansqlite.utils import trace
 
@@ -28,31 +28,43 @@ class Database:
             self.init_table(table_name=k, table_schema=v)
 
     def init_table(self, table_name: str, table_schema: List[TableColumn]) -> bool:
-        schema = []
+        column_sql = []
         model_entries = {}
-        for col in table_schema:
-            x = TableColumn.model_validate(col)
-            not_nullable = x.nullable is False
+        schema = [TableColumn.model_validate(col) for col in table_schema]
+
+        def pk_desc(x: TableColumn) -> str:
+            return ' DESC' if x.primary_key is PrimaryKeyType.Descending else ''
+        pk_cols = [
+            f'{x.name}{pk_desc(x)}' for x in schema if x.primary_key is not None]
+        pk_text = f'PRIMARY KEY ({", ".join(pk_cols)})' if len(
+            pk_cols) > 0 else None
+
+        for col in schema:
+            not_nullable = col.nullable is False
             s = [
-                x.name,
-                x.datatype.name
+                col.name,
+                col.datatype.name
             ]
-            if (x.primary_key is not None):
-                s.append('PRIMARY KEY DESC' if x.primary_key ==
-                         PrimaryKeyType.Descending else 'PRIMARY KEY')
-            else:
-                if not_nullable:
+            if (col.primary_key is None):
+                if not_nullable is True:
                     s.append('NOT NULL')
-            schema.append(' '.join(s))
-            model_entries[x.name] = (
-                x.datatype.value, ... if not_nullable else None)
+                if col.unique is True:
+                    s.append('UNIQUE')
+            column_sql.append(' '.join(s))
+            model_entries[col.name] = (
+                col.datatype.value, ... if not_nullable else None)
+
+        if pk_text is not None:
+            column_sql.append(pk_text)
 
         self.models[table_name] = create_model(table_name, **model_entries)
 
+        print(
+            f'CREATE TABLE IF NOT EXISTS {table_name} ({", ".join(column_sql)});')
         try:
             cur = self.dbconn.cursor()
             cur.execute(
-                f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(schema)});")
+                f'CREATE TABLE IF NOT EXISTS {table_name} ({", ".join(column_sql)});')
             self.schemas[table_name] = table_schema
 
         except Exception as e:
