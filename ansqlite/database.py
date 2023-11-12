@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from pydantic import BaseModel, create_model
-from typing import Dict, List, Callable
+from typing import Dict, List
 from ansqlite.schema import TableColumn, PrimaryKeyType
 from ansqlite.utils import trace
 
@@ -59,8 +59,6 @@ class Database:
 
         self.models[table_name] = create_model(table_name, **model_entries)
 
-        print(
-            f'CREATE TABLE IF NOT EXISTS {table_name} ({", ".join(column_sql)});')
         try:
             cur = self.dbconn.cursor()
             cur.execute(
@@ -75,7 +73,6 @@ class Database:
         return self.dbconn is not None
 
     def get_connection(self) -> sqlite3.Connection:
-        print('dbconn', self.dbconn is not None)
         return self.dbconn
 
     def insert_data(
