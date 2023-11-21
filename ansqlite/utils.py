@@ -1,6 +1,6 @@
 import traceback
 
 
-def trace(msg: str, e: Exception):
-    print(traceback.format_exception(e))
-    print(f"{msg}; {e}")
+def trace(msg: str, e: Exception) -> str:
+    return '\n'.join([msg] +
+        traceback.format_exception(e))

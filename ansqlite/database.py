@@ -1,7 +1,9 @@
 import json
 import sqlite3
+from anlogger import Logger as AnLogger
+from logging import Logger
 from pydantic import BaseModel, create_model
-from typing import Dict, List
+from typing import Dict, List, Optional
 from ansqlite.schema import TableColumn, PrimaryKeyType
 from ansqlite.utils import trace
 
@@ -11,17 +13,19 @@ class Database:
         self,
         database_path: str,
         schemas: Dict[str, List[TableColumn]] = {},
-        debug: bool = False
+        logger: Optional[Logger] = None
     ):
         super().__init__()
-        self.debug = debug
+        self.logger = logger if logger is not None else AnLogger(
+            name='ansqlite', default_loglevel='INFO').get()
+
         self.schemas: Dict[str, List[TableColumn]] = {}
         self.models: Dict[str, BaseModel] = {}
 
         try:
             self.dbconn = sqlite3.connect(database_path)
         except Exception as e:
-            trace('Failed to open database', e)
+            self.logger.error(trace('Failed to open database', e))
             self.dbconn = None
 
         for k, v in schemas.items():
@@ -66,7 +70,7 @@ class Database:
             self.schemas[table_name] = table_schema
 
         except Exception as e:
-            trace('Failed to initialize table', e)
+            self.logger.error(trace('Failed to initialize table', e))
             self.dbconn = None
 
     def check_connection(self) -> bool:
@@ -83,9 +87,8 @@ class Database:
         if len(data) < 1:
             return
 
-        if self.debug:
-            print(
-                f'Save data to table {table_name}: {json.dumps(data, indent=2)}')
+        self.logger.debug(
+            f'Save data to table {table_name}: {json.dumps(data, indent=2)}')
 
         schema = self.schemas[table_name] if table_name in self.schemas else None
         if schema is None:
@@ -104,7 +107,7 @@ class Database:
                 f"INSERT OR IGNORE INTO {table_name} ({', '.join(cols)}) VALUES ({', '.join('?'*len(cols))})", rowdata)
             self.dbconn.commit()
         except Exception as e:
-            trace('Failed to save data', e)
+            self.logger.error(trace('Failed to save data', e))
             raise e
 
     def execute_and_fetchall(self, sql: str, errmsg: str) -> List[Dict] | None:
@@ -116,7 +119,7 @@ class Database:
             data = [dict(zip(cols, row)) for row in rows]
             return data
         except Exception as e:
-            trace(errmsg, e)
+            self.logger.error(trace(errmsg, e))
             raise e
 
     def execute_and_commit(self, sql: str, errmsg: str) -> None:
@@ -125,5 +128,5 @@ class Database:
             cur.execute(sql)
             self.dbconn.commit()
         except Exception as e:
-            trace(errmsg, e)
+            self.logger.error(trace(errmsg, e))
             raise e
