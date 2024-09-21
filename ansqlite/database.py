@@ -27,7 +27,7 @@ class Database:
         name='ansqlite', default_loglevel='INFO').get()
 
     self.schemas: Dict[str, List[TableColumn]] = schemas
-    self.models: Dict[str, BaseModel] = {}
+    self.models: Dict[str, Type[BaseModel]] = {}
 
     try:
       self.dbconn = sqlite3.connect(database_path)
@@ -52,6 +52,7 @@ class Database:
 
     for col in schema:
       not_nullable = col.nullable is False
+      is_required = False if col.primary_key is PrimaryKeyType.Autoincrementing else not_nullable
       s = [
           col.name,
           col.datatype.name
@@ -63,7 +64,7 @@ class Database:
           s.append('UNIQUE')
       column_sql.append(' '.join(s))
       model_entries[col.name] = (
-          col.datatype.value, ... if not_nullable else None)
+          col.datatype.value, ... if is_required else None)
 
     if pk_text is not None:
       column_sql.append(pk_text)
@@ -81,7 +82,7 @@ class Database:
       raise DatabaseInitializationException(
           'Failed to initialize table') from e
 
-  def get_model(self, table_name: str) -> BaseModel:
+  def get_model(self, table_name: str) -> Type[BaseModel]:
     if table_name not in self.models:
       raise ModelNotFoundException(f'Model not found for table "{table_name}"')
     return self.models[table_name]
@@ -108,8 +109,8 @@ class Database:
       raise DatabaseInitializationException(
           f'Table "{table_name}" has not been initialized; inserting data failed')
 
-    cols = model.model_validate(data[0]).model_dump().keys()
-    rowdata = [tuple(model.model_validate(row).model_dump().values())
+    cols = model.model_validate(data[0].model_dump()).model_dump().keys()
+    rowdata = [tuple(model.model_validate(row.model_dump()).model_dump().values())
                for row in data]
 
     try:
@@ -127,7 +128,7 @@ class Database:
       raise TransactionException('Failed to insert data') from e
 
   def execute_and_fetchall(
-          self, sql: str, errmsg: str, result_model: Type[T] = BaseModel) -> List[T]:
+          self, sql: str, errmsg: str, result_model: Type[T]) -> List[T]:
     try:
       cur = self.dbconn.cursor()
       res = cur.execute(sql)

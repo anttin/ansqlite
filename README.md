@@ -11,7 +11,7 @@ python3 -m pip install ansqlite
 ## Usage
 
 ```python
-from ansqlite import Database, Datatype, PrimaryKeyType
+from ansqlite import Database, Datatype, PrimaryKeyType, TableColumn
 
 tablename = 'tablename'
  
@@ -19,27 +19,37 @@ db = Database(
     database_path='/path/to/database/file.db',
     schemas={
         tablename: [
-            {
-                "name": "timestamp",
-                "datatype": Datatype.INTEGER,
-                "primary_key": PrimaryKeyType.Descending,
-            },
-            {
-                "name": "value",
-                "datatype": Datatype.REAL,
-            },            
+            TableColumn(
+                name="timestamp",
+                datatype=Datatype.INTEGER,
+                primary_key=PrimaryKeyType.Descending
+            ),
+            TableColumn(
+                name="value",
+                datatype=Datatype.REAL
+            ),            
         ],
         'othertablename': [
-            {
-                "name": "hash",
-                "datatype": Datatype.TEXT,
-                "primary_key": PrimaryKeyType.Ascending,
-            },
-            {
-                "name": "text",
-                "datatype": Datatype.TEXT,
-            },            
-        ],        
+            TableColumn(
+                name="hash",
+                datatype=Datatype.TEXT,
+            ),
+            TableColumn(
+                name="text",
+                datatype=Datatype.TEXT
+            ),            
+        ],
+        'anothertablename': [
+            TableColumn(
+                name="id",
+                datatype=Datatype.INTEGER,
+                primary_key=PrimaryKeyType.Autoincrementing
+            ),
+            TableColumn(
+                name="text",
+                datatype=Datatype.TEXT
+            ),            
+        ],            
     }
 )
 
@@ -60,7 +70,8 @@ db.execute_and_commit(
 
 rows = db.execute_and_fetchall(
     sql=f'SELECT * FROM {tablename} where timestamp >= 1699297200 and timestamp < 1699304400 limit 10;',
-    errmsg='Failed to retrieve data'
+    errmsg='Failed to retrieve data',
+    result_model=db.get_model(tablename),
   )
 
 print(rows)

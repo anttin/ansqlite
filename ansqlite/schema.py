@@ -13,6 +13,7 @@ class Datatype(Enum):
 class PrimaryKeyType(Enum):
   Ascending = 'ASC'
   Descending = 'DESC'
+  Autoincrementing = 'AUTOINCREMENT'
 
 
 class TableColumn(BaseModel):
