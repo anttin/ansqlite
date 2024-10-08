@@ -63,8 +63,10 @@ class Database:
         if col.unique is True:
           s.append('UNIQUE')
       column_sql.append(' '.join(s))
+
       model_entries[col.name] = (
-          col.datatype.value, ... if is_required else None)
+          col.datatype.value, ... if is_required else None) if not_nullable else (
+          col.datatype.value | None, ... if is_required else None)
 
     if pk_text is not None:
       column_sql.append(pk_text)
